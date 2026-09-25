@@ -24,6 +24,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Para cualquier funcionalidad relevante, usa los skills del repo — [`/spec`](.agents/skills/spec/SKILL.md) para diseñar y [`/spec-impl`](.agents/skills/spec-impl/SKILL.md) para implementar — en lugar de escribir código directamente.
 - Las specs viven en `specs/`, numeradas `NN-slug.md` (secuencial desde la más alta existente; `specs/` aún no existe). Escritas en español, acorde al idioma del repo.
 - `/spec-impl` solo trabaja sobre specs cuyo estado significa "Approved"; crea la rama git `spec-NN-slug` e implementa paso a paso, pausando para revisar los diffs. Nunca commitea automáticamente — el commit es decisión del usuario.
+- `/spec-verify NN-slug` delega en el agente [`spec-verifier`](.opencode/agent/spec-verifier.md), que recorre los criterios de aceptación de la spec, los verifica con lint/build, Playwright y visión, marca los checks que pasan y repara el código cuando algo falla. Tampoco commitea.
 
 # Fuente de verdad del diseño
 
