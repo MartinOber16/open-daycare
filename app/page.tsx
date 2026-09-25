@@ -1,5 +1,6 @@
 import { PostCard } from "@/components/post-card";
 import { Sidebar } from "@/components/sidebar";
+import { MobileNav } from "@/components/mobile-nav";
 import { CameraIcon } from "@/components/icons";
 import { posts, session } from "@/lib/mock/feed";
 
@@ -11,6 +12,8 @@ export default function Home() {
       <Sidebar session={session} />
 
       <main className="h-[100vh] min-w-0 flex-1 overflow-y-auto">
+        <MobileNav session={session} />
+
         <div className="mx-auto w-full max-w-[760px] px-[40px] pt-[34px] pb-[80px]">
           <div className="mb-[24px]">
             <div className="mb-[4px] text-[12.5px] font-extrabold tracking-[0.8px] text-terracotta">
