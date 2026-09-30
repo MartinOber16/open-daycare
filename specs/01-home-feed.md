@@ -1,194 +1,157 @@
-# SPEC 01 — Feed de la guardería en la ruta `/`
+# SPEC 01 — Home Feed estático (calco de feed.dc.html)
 
-> **Estado:** Aprobado
-> **Depende en:** —
-> **Fecha:** 2026-09-25
-> **Objetivo:** Convertir la pantalla `references/pantallas/feed.dc.html` en la ruta `/` de la app, replicando su diseño con Tailwind y datos mock, sin autenticación ni base de datos.
+> **Estado:** Implementado
+> **Depende de:** — (primera spec)
+> **Fecha:** 2026-07-02
+> **Objetivo:** Implementar el home (`/`) como calco visual del feed de la guardería (`references/pantallas/feed.dc.html`) con datos mock, sin autenticación ni base de datos, y sidebar responsive colapsable en mobile.
 
-## Por qué existe esta spec
+## Scope
 
-Es la primera pantalla real de la app y la que fija el vocabulario visual (paleta, tipografías, radios, sombras) que las otras 14 pantallas de `references/pantallas/` van a reutilizar. Si los colores viven como valores arbitrarios en el JSX, cada pantalla siguiente los re-inventa.
+**In:**
 
-## Alcance
+- Página home en `app/page.tsx` que reemplaza el scaffold de create-next-app y replica `references/pantallas/feed.dc.html`.
+- Sidebar de desktop (248px, fija, sticky): logo `OpenDayCare · Sala Soles`, botón `Nueva publicación`, nav con 4 items (`Feed` activo, `Niños`, `Avisos`, `Mi cuenta`) y tarjeta de usuario (`Caro Giménez · Maestra · Soles`) con botón de logout.
+- Main scrollable: eyebrow `GUARDERÍA · SALA SOLES`, h1 `Buenas, Caro`, subtítulo `12 niños · martes 17 jun`.
+- Composer `Compartí un momento…` (caja con avatar `C` e ícono de cámara).
+- Divisor `PUBLICADO HOY` con línea separadora.
+- Lista de 3 posts con los textos, badges y audiencias del template:
+  - Post **logro** (Mateo, badge `LOGRO` verde, `Para: familia de Mateo`).
+  - Post **actividad** (Mateo, badge `ACTIVIDAD` azul, con placeholder de foto dashed).
+  - Post **anuncio** (avatar con ícono megáfono, badge `ANUNCIO`, `Para: toda la sala`).
+- Cada post con footer: contador de corazones, contador de comentarios y link `Editar`.
+- Fuentes Fredoka (headings/avatares con iniciales) + Nunito (cuerpo) vía `next/font/google` en `app/layout.tsx`.
+- Tokens de la paleta cálida en `@theme` de `app/globals.css` (bg `#F6ECDF`, accent `#D9583C`/`#F2937A`/`#EE8164`, staff blue `#2E89A6`, logro green `#3E9B6C`, anuncio blue `#4E72C8`).
+- Responsive: en mobile el sidebar se oculta y un botón hamburguesa abre un drawer con el mismo contenido del sidebar.
+- Componentes descompuestos en `components/shared/` (reutilizables) y `components/home/` (propios del home).
+- Data mock en `app/_data/mock.ts`.
+- `lang="es"` y `metadata` (`OpenDayCare`) actualizados en `app/layout.tsx`.
+- Remover el dark mode heredado de `globals.css`.
 
-**Dentro:**
+**Out of scope (para specs futuras):**
 
-- La ruta `/` renderiza el feed del mockup: sidebar, header, barra de composición, separador "PUBLICADO HOY" y 3 tarjetas de publicación.
-- Tokens de diseño en `app/globals.css` (`@theme` de Tailwind v4) con la paleta y las familias tipográficas del mockup.
-- Fredoka + Nunito vía `next/font/google` en `app/layout.tsx`, `lang="es"` y metadata de OpenDayCare.
-- 3 publicaciones mock tipadas en `lib/mock/feed.ts` (milestone, activity con foto, announcement).
-- Like local con `useState` en cada tarjeta (sin persistencia).
-- Layout responsive: sidebar fijo desde 1024px; header con hamburguesa + drawer lateral con overlay por debajo.
-- Links de navegación sin ruta real renderizados como elementos no navegables (mismo estilo, sin `href`).
+- Autenticación, login, activación de cuenta y sesiones (pantallas 01 y 02 del catálogo).
+- Base de datos o cualquier forma de persistencia.
+- Funcionalidad de botones y links (`Nueva publicación`, nav, `Editar`, composer, logout, foto, comentarios): quedan como placeholders visuales sin navegación ni acción.
+- Las otras 13 pantallas del catálogo (`crear-publicacion`, `ninos`, `perfil-nino`, `agregar-nino`, `vincular-padre`, `avisos`, `mi-cuenta`, `familia-feed`, `detalle-publicacion`, `foto`, `resumen-dia`, `familia-cuenta`).
+- Reacciones y comentarios funcionales: los contadores son estáticos del mock.
+- Subida real de fotos: el placeholder de foto queda como en el template.
+- Filtros o buscador del feed.
 
-**Fuera de alcance (specs futuras):**
+## Data model
 
-- Autenticación, login, activación de cuenta, roles.
-- Base de datos, API, server actions, mutaciones.
-- `/ninos`, `/avisos`, `/mi-cuenta`, `/crear-publicacion`, detalle de publicación, visor de foto, resumen del día, feed de familia, perfil de niño.
-- Persistencia de likes, comentarios, subida de fotos.
-- Estados vacíos, de error y de carga.
-- Favicon e identidad definitiva de marca.
-
-## Modelo de datos
-
-`lib/mock/feed.ts` — sin persistencia, sin I/O. Tipos exportados para que la spec que traiga datos reales los reutilice.
+Datos mock en `app/_data/mock.ts`. No hay persistencia: todo es estático y en memoria.
 
 ```ts
-export type PostType = 'milestone' | 'activity' | 'announcement';
-export type AvatarPalette = 'child' | 'staff' | 'system';
+export type PostType = 'achievement' | 'activity' | 'announcement';
+export type NavIcon = 'home' | 'kids' | 'bell' | 'user';
 
-export interface Author {
-	name: string; // "Mateo" | "Anuncio general"
-	meta: string; // "14:20 · publicado por vos"
-	initial?: string; // "M" — ausente cuando hay icono
-	icon?: 'megaphone'; // presente solo en posts de sistema
-	palette: AvatarPalette;
+// Etiquetas visuales (español) por tipo — el dato va en inglés, la UI en español.
+export const POST_TYPE_LABEL: Record<PostType, string> = {
+  achievement: 'LOGRO',
+  activity: 'ACTIVIDAD',
+  announcement: 'ANUNCIO',
+};
+
+export interface FeedPost {
+  id: string;
+  authorName: string; // "Mateo" | "Anuncio general"
+  authorInitial?: string; // "M" (omitto si el avatar usa ícono)
+  avatarBg: string; // "#A9D9E8" | "#CCD8F4"
+  avatarColor: string; // "#1F7A93" | "#4E72C8"
+  avatarIcon?: 'megaphone'; // presente en el post anuncio
+  time: string; // "14:20"
+  publishedByMe: boolean; // → "publicado por vos"
+  type: PostType;
+  audience: string; // "familia de Mateo" | "toda la sala"
+  text: string;
+  photoPlaceholder?: { label: string }; // "Foto · pintando con témperas"
+  hearts: number;
+  comments: number;
 }
 
-export interface Post {
-	id: string;
-	type: PostType;
-	author: Author;
-	audience: string; // "Para: familia de Mateo"
-	body: string;
-	photo?: { alt: string }; // presente solo en el post de actividad
-	likes: number; // 3, 5, 8
-	liked: boolean; // true: el mockup muestra los corazones llenos
-	comments: number; // 1, 2, 0
+export interface NavItem {
+  label: string; // "Feed" | "Niños" | "Avisos" | "Mi cuenta"
+  icon: NavIcon;
+  active: boolean;
 }
 
-export interface Session {
-	name: string; // "Caro Giménez"
-	role: string; // "Maestra · Soles"
-	initial: string; // "C"
-	classroom: string; // "Sala Soles"
-	childrenCount: number; // 12
-	date: string; // "martes 17 jun" → se renderiza "12 niños · martes 17 jun"
-}
-
-export const session: Session;
-export const posts: Post[]; // exactamente 3, en orden: milestone, activity, announcement
-```
-
-El badge de tipo se deriva de `type` con un mapa de estilos en `components/post-card.tsx` (milestone `#CFEBD8`/`#3E9B6C`, activity `#C7E7F1`/`#2E89A6`, announcement `#CCD8F4`/`#4E72C8`). El avatar se deriva de `palette` (child `#A9D9E8`/`#1F7A93`, staff `#F2937A`/blanco, system `#CCD8F4` con megáfono). Ningún color de badge o avatar va en los datos.
-
-`app/globals.css` — dos bloques de tema:
-
-```css
-@theme {
-	/* colores literales */
-	--color-cream: #f6ecdf;
-	--color-card: #fffdf9;
-	--color-border: #ece0d0;
-	--color-border-soft: #f0e6d8;
-	--color-divider: #e7dac8;
-	--color-brown: #3f362e;
-	--color-brown-body: #4a4038;
-	--color-text-soft: #a89a8b;
-	--color-text-faint: #94887b;
-	--color-text-nav: #6e6359;
-	--color-text-today: #8a7c6d;
-	--color-terracotta: #d9583c;
-	--color-terracotta-strong: #c5503a;
-	--color-heart: #e0654a;
-	--color-coral-soft: #fbe3d8;
-	--color-orange: #f2937a;
-	--color-orange-soft: #f8c3a8;
-	--color-orange-button: #ee8164;
-	--color-amber: #f4ece1;
-	--color-photo-frame: #dbcdba;
-	--color-photo-text: #b0a290;
-	--color-green: #3e9b6c;
-	--color-green-soft: #cfebd8;
-	--color-sky: #2e89a6;
-	--color-sky-soft: #c7e7f1;
-	--color-indigo: #4e72c8;
-	--color-indigo-soft: #ccd8f4;
-	--color-avatar-child: #a9d9e8;
-	--color-avatar-child-text: #1f7a93;
-}
-
-@theme inline {
-	/* fuentes: resuelven la variable de next/font */
-	--font-fredoka: var(--font-fredoka-src);
-	--font-nunito: var(--font-nunito-src);
+export interface SidebarUser {
+  name: string; // "Caro Giménez"
+  role: string; // "Maestra · Soles"
+  initial: string; // "C"
 }
 ```
 
-En `app/layout.tsx`, `next/font/google` declara las variables con sufijo `-src` (`Fredoka` con `weight: ["500","600"]`, `Nunito` con `weight: ["400","600","700","800"]`, `subsets: ["latin"]`). El sufijo evita la colisión entre la variable de next/font y el token del tema. `body` queda `min-h-full bg-cream font-nunito text-brown antialiased`. Se borran los tokens `--background`/`--foreground` y el bloque `prefers-color-scheme: dark` de create-next-app. El scrollbar custom (10px, thumb `#E4D6C4`, radio 8px, `background-clip: content-box`) va como CSS plano en `globals.css`: no es una utility de Tailwind.
+Convenciones:
 
-Valores de layout que no se negocian (del mockup, copiados textualmente): wrapper `flex min-h-100vh`; aside 248px, `padding 24px 16px`, `sticky top-0 h-100vh`, bg card, `border-r` border; nav items `padding 11px 12px` radio 12px, activo bg coral-soft + terracotta `font-extrabold`, inactivo text-nav `font-semibold`; main `flex-1 min-w-0 h-100vh overflow-y-auto`; contenido `max-w-760px` `padding 34px 40px 80px`; tarjeta `padding 20px 22px` radio 20px sombra `0 4px 16px -12px rgba(120,90,60,.5)`; barra de composición radio 18px `padding 14px 18px`; separador `mb-14px` con línea `1px` divider; posts `gap-16px`; pie de tarjeta `mt-16px pt-14px border-t` border-soft `gap-18px`; bloque de foto `h-200px` borde punteado 1.5px photo-frame sobre amber; CTA gradiente `180deg #f4977e→#ee8164` radio 14px sombra `0 8px 18px -8px rgba(238,129,100,.75)`; marca gradiente `155deg #f8c3a8→#f2937a`. Sin estilos hover: el feed del mockup no los tiene.
+- El color y la etiqueta del badge se derivan de `type` en el componente (en español para la UI, pero el dato es inglés): `achievement`→`LOGRO` verde `#3E9B6C`, `activity`→`ACTIVIDAD` azul `#2E89A6`, `announcement`→`ANUNCIO` `#4E72C8`; no va en el dato.
+- Los `href` de nav y links quedan como `#` (placeholders no funcionales).
+- Los SVG de íconos se centralizan en `components/shared/icons.tsx` (mismos `viewBox`/`stroke` del template).
 
-## Plan de implementación
+## Implementation plan
 
-Antes de escribir código, leer `node_modules/next/dist/docs/01-app/01-getting-started/13-fonts.md`, `.../14-metadata-and-og-images.md` y `03-api-reference/02-components/link.md` (regla de `AGENTS.md`: esta versión de Next tiene breaking changes). Fredoka y Nunito están confirmados en el catálogo de `next/font/google` de next 16.3.6.
+1. **Base global.** En `app/layout.tsx` reemplazar Geist/Geist*Mono por `Fredoka` y `Nunito` (`next/font/google`) con variables `--font-fredoka` y `--font-nunito`; cambiar `lang` a `es`; actualizar `metadata` (title `OpenDayCare`). En `app/globals.css` ampliar `@theme` con los tokens de paleta y de fuente, definir fondo `#F6ECDF`/texto `#3F362E` y eliminar el bloque de dark mode. \_Prueba manual: `npm run dev`, fondo cálido y fuentes cargando.*
+2. **Data mock.** Crear `app/_data/mock.ts` con los tipos de arriba y los datos: 3 posts, 4 `NavItem`, 1 `SidebarUser` y el subtítulo de sala. _Prueba: importar desde `page.tsx` sin romper._
+3. **Iconos.** Crear `components/shared/icons.tsx` con los SVG del template como componentes nombrados (logo/sol, plus, home, kids, bell, user, logout, heart, comment, camera, megaphone).
+4. **Sidebar (desktop).** Crear `components/shared/Sidebar.tsx`: logo, botón `Nueva publicación`, nav (Feed activo) y tarjeta de usuario con logout. Renderiza íconos de `shared/icons.tsx`. Visible solo en desktop (`md:flex` / oculto en mobile).
+5. **MobileNav (drawer).** Crear `components/shared/MobileNav.tsx`: botón hamburguesa fijo (visible solo en `< md`) que abre un overlay drawer que reutiliza el contenido del `Sidebar`.
+6. **Atómicos del home.** Crear en `components/home/`: `FeedHeader.tsx` (eyebrow + h1 + subtítulo), `Composer.tsx` (caja `Compartí un momento…`), `FeedDivider.tsx` (`PUBLICADO HOY` + línea) y `PhotoPlaceholder.tsx` (caja dashed).
+7. **PostCard.** Crear `components/home/PostCard.tsx` que renderiza avatar, nombre+tiempo, badge (color por `type`), audiencia, texto, `PhotoPlaceholder` si aplica, y footer (corazones/comentarios/`Editar`). Compone `PhotoPlaceholder`.
+8. **Ensamblar `app/page.tsx`.** Layout `flex`: `Sidebar` (desktop) + `MobileNav` (mobile) + `<main>` scrollable con `FeedHeader`, `Composer`, `FeedDivider` y la lista de `PostCard` mapeada desde `app/_data/mock.ts`. _Prueba: comparar contra `references/pantallas/feed.dc.html` y `references/screenshots/feed.png`._
 
-1. **`app/globals.css`**: los dos bloques `@theme`, estilos de `body` y scrollbar custom; borrar el boilerplate de create-next-app. Verificar: `npm run dev` muestra el fondo cream.
-2. **`app/layout.tsx`**: Fredoka + Nunito con variables `-src`, `lang="es"`, `title: "OpenDayCare"`, `description: "Muro de la guardería · Sala Soles"`, clases de body nuevas. Verificar: los `h1` se ven en Fredoka.
-3. **`lib/mock/feed.ts`**: tipos + `session` + `posts` con los textos exactos del mockup. Sin componente todavía.
-4. **`components/icons.tsx`**: 14 iconos (marca, plus, casa, niños, campana, usuario, logout, corazón, comentario, cámara, imagen, megáfono, menú, X) como `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">` **sin** `width`/`height`: el tamaño sale de `size-*` de Tailwind.
-5. **`components/post-card.tsx`** (`"use client"`): tarjeta completa, mapa de estilos por `type`, bloque de foto condicional, like con `useState(post.liked)` + `useState(post.likes)`; el corazón alterna `fill-heart` / `fill-none`.
-6. **`components/sidebar.tsx`** (`"use client"`): exporta `SidebarContent({ onNavigate })` (marca, CTA, nav, bloque de usuario) y `Sidebar` (el `<aside>` de desktop). El array de navegación vive acá, con `href: string | null`: `Feed` → `/` (navega), el resto → `null` (se renderizan como `<span>` sin `href`).
-7. **`app/page.tsx`** (server component): wrapper flex, `<Sidebar />`, `<main>` con header, barra de composición, separador y `posts.map(...)`. Importa los datos y los pasa por props a los componentes cliente. Verificar a 1440x900 contra el mockup.
-8. **`components/mobile-nav.tsx`** (`"use client"`) + wiring en `page.tsx`: header pegajoso (`sticky top-0`, marca + hamburguesa) visible solo `<lg`, drawer `fixed inset-y-0 left-0 w-72` con `translate-x` + `transition`, overlay `bg-black/40`, botón X, `aria-expanded`/`aria-controls` en la hamburguesa. Cierra con overlay, X, `Escape` (un `useEffect` de `keydown`) y con cualquier click en un item del nav. Visible solo `<lg`, así que el aside de desktop queda intacto.
-9. **Verificación**: `npm run lint` y `npm run build` limpios, y tres capturas con Playwright en `.playwright-mcp/` a 1440x900, 768x1024 y 390x844.
+## Acceptance criteria
 
-## Criterios de aceptación
+- [x] Al abrir `http://localhost:3000/` se renderiza el feed (no el scaffold de create-next-app).
+- [x] El fondo de la página es `#F6ECDF` y el texto base es `#3F362E`.
+- [x] Los headings (logo, nombres, `Buenas, Caro`, iniciales de avatares) usan Fredoka; el cuerpo usa Nunito.
+- [x] El sidebar de desktop muestra logo `OpenDayCare · Sala Soles`, botón `Nueva publicación`, nav con 4 items (`Feed` activo) y tarjeta `Caro Giménez · Maestra · Soles` con botón logout.
+- [x] El main muestra el eyebrow `GUARDERÍA · SALA SOLES`, el h1 `Buenas, Caro` y el subtítulo `12 niños · martes 17 jun`.
+- [x] Se renderiza el composer `Compartí un momento…` con avatar `C` e ícono de cámara.
+- [x] Se renderiza el divisor `PUBLICADO HOY` con su línea.
+- [x] Se renderizan exactamente 3 posts con los textos, badges (`LOGRO`/`ACTIVIDAD`/`ANUNCIO`) y audiencias del template.
+- [x] El post de actividad muestra el placeholder de foto con borde dashed y la etiqueta `Foto · pintando con témperas`.
+- [x] Cada post muestra contador de corazones, contador de comentarios y el link `Editar` (solo visuales).
+- [x] En viewport `< md` el sidebar se oculta y un botón hamburguesa abre un drawer con el mismo contenido del sidebar.
+- [x] Ningún botón o link del home navega o ejecuta una acción.
+- [x] `npm run lint` pasa sin errores.
+- [x] `npx tsc --noEmit` pasa sin errores.
+- [x] No hay errores en la consola del navegador al cargar.
+- [x] No queda rastro del dark mode heredado ni de las fuentes Geist.
 
-- [ ] `npm run dev` renderiza `/` sin errores ni warnings en la consola del navegador.
-- [ ] `npm run lint` y `npm run build` terminan sin errores.
-- [ ] A 1440x900 el aside mide 248px, con fondo `#FFFDF9` y borde derecho `#ECE0D0`.
-- [ ] El contenido principal tiene 760px de ancho máximo y está centrado.
-- [ ] Las 3 tarjetas tienen radio 20px, fondo `#FFFDF9` y la sombra `0 4px 16px -12px rgba(120,90,60,.5)`.
-- [ ] "OpenDayCare", "Buenas, Caro" y los nombres de niño se renderizan en Fredoka; el resto del texto en Nunito.
-- [ ] Aparecen exactamente 3 publicaciones, en orden milestone → activity → announcement, bajo el separador "PUBLICADO HOY", y solo la de actividad tiene el bloque de foto punteado.
-- [ ] Los badges se ven verde (milestone), celeste (activity) e índigo (announcement).
-- [ ] Los corazones arrancan llenos con 3, 5 y 8; al clickear el primero el contador pasa a 2 y el corazón queda vacío; al recargar vuelve a 3 y lleno.
-- [ ] El bloque "Para: familia de Mateo" / "Para: toda la sala" se muestra en las 3 tarjetas.
-- [ ] `/ninos`, `/avisos`, `/mi-cuenta`, "Nueva publicación", "Editar", el logout, el link de comentarios y el bloque de foto se ven con el estilo del mockup pero no navegan: no tienen `href` y no existen rutas que devuelvan 404.
-- [ ] La marca del sidebar navega a `/`.
-- [ ] A 390x844 no se ve el aside, aparece un header pegajoso con la marca y una hamburguesa, y no hay scroll horizontal.
-- [ ] La hamburguesa abre un drawer con el CTA, los 4 items de nav y el bloque de usuario; el overlay, la X y `Escape` lo cierran.
-- [ ] A 768x1024 el contenido no desborda horizontalmente.
-- [ ] La captura de `/` a 1440x900 es indistinguible a simple vista de `references/screenshots/feed.png`.
-- [ ] El navegador no pide nada a `fonts.googleapis.com` ni a `fonts.gstatic.com` (self-hosting de next/font).
+## Decisions
 
-## Decisiones
+- **Sí:** Tailwind utilities con valores arbitrarios (`bg-[#F6ECDF]`, `rounded-[20px]`) + tokens en `@theme`. Es idiomático al repo (Tailwind v4) y se logra calco pixel-perfect.
+- **No:** Portar los `style="..."` inline del template. Iría contra las convenciones del proyecto y dificulta el mantenimiento.
+- **Sí:** Fuentes vía `next/font/google` (Fredoka + Nunito). Self-hosted, sin layout shift, idiomático de Next.js 16.
+- **No:** `<link>` a Google Fonts como en el template. `next/font` es mejor práctica y evita parpadeo.
+- **Sí:** Componentes descompuestos en `components/shared` y `components/home` con subcarpetas semánticas. Separa reutilizables de propios del home y mejora el mantenimiento.
+- **No:** Un `app/page.tsx` monolítico. Difícil de mantener y de reutilizar.
+- **Sí:** Data mock en `app/_data/mock.ts` (carpeta `_data` excluida de ruteo por el prefijo `_`). Fácil de swapear por API/BD después.
+- **No:** Hardcodear los datos dentro de los componentes. Mezcla presentación con datos.
+- **Sí:** Botones y links como placeholders visuales no funcionales. El alcance es solo el diseño del home.
+- **No:** Implementar handlers o navegación. Requiere las otras pantallas y auth, fuera de scope.
+- **Sí:** Responsive con drawer hamburguesa en mobile que reutiliza el contenido del sidebar. Más fiel al template que un bottom-tab bar.
+- **No:** Bottom tab bar en mobile. Sería otra maqueta, no "idéntica" al template.
+- **Sí:** Remover el dark mode heredado. El template es solo claro.
+- **Sí:** `lang="es"` y metadata `OpenDayCare`. El scaffold de create-next-app no aplica.
+- **Nota:** Especificación desarrollada y entregada completa para revisión directa en el archivo `.md` (el usuario optó por revisar en archivo en vez de sección por sección en el chat).
 
-- **Sí:** identificadores en inglés (tipos, campos, tokens, props, rutas de archivo) y textos de UI en español. El código se comparte con un repo en español donde los términos de dominio se traducen mal, y los datos de la app son todos de la UI.
-- **Sí:** tokens `@theme` en `globals.css` en vez de `bg-[#F6ECDF]`. Es el vocabulario que las 15 pantallas van a compartir; los valores arbitrarios se repiten y divergen.
-- **Sí:** los tokens llevan traducción literal del color (`cream`, `brown`, `terracotta`, `coral-soft`, `photo-frame`), no nombres semánticos. El diseño es claro único y de color fijo, así que el nombre literal del color documenta el hex contra el mockup.
-- **Sí:** colores literales en `@theme`, fuentes en `@theme inline` (solo ellas necesitan resolver otra variable).
-- **Sí:** variables de next/font con sufijo `-src` para no colisionar con los tokens `--font-fredoka` / `--font-nunito`.
-- **No:** el bloque `prefers-color-scheme: dark` de create-next-app. El diseño es claro únicamente; dejarlo hace el feed ilegible si el sistema está en dark.
-- **Sí:** datos mock en `lib/mock/feed.ts` con tipos exportados. La spec de datos reales los importa y no toca los componentes.
-- **No:** los datos inline en `page.tsx`, o un componente por tarjeta con texto hardcodeado.
-- **Sí:** elementos sin ruta como `<span>` sin `href`. Cero 404 y cero stubs.
-- **No:** páginas stub para `/ninos`, `/avisos` y `/mi-cuenta`. Cada pantalla es su propia spec.
-- **Sí:** las rutas en español (`/ninos`, `/avisos`, `/mi-cuenta`) porque son las de los mockups, y `references/` no se edita.
-- **Sí:** like con estado en el componente, sin persistencia.
-- **No:** `localStorage` o `sessionStorage` para los likes. No hay usuario real todavía; persistir el like de un anónimo no significa nada.
-- **Sí:** un solo `SidebarContent` reutilizado por el aside y el drawer, en lugar de duplicar el markup.
-- **Sí:** drawer lateral con overlay, cierre por overlay, X y `Escape`.
-- **No:** scroll-lock del body con el drawer abierto. El drawer entra completo en 390x844 y el overlay cubre el viewport; un `overflow: hidden` sobre body es un efecto extra sin ganancia.
-- **No:** estilos hover. El feed del mockup no los tiene; el índice de pantallas sí, y ese comportamiento se decide cuando se implemente esa pantalla.
-- **No:** los artefactos `<x-dc>`, `<helmet>` y `<template>` del mockup. Son del bundler de referencias.
+## Risks
 
-## Riesgos
+| Riesgo                                                                                  | Mitigación                                                                                                                     |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| El calco pixel-perfect con Tailwind puede requerir muchos valores arbitrarios (`[...]`) | Aceptar el trade-off; agrupar los colores recurrentes como tokens en `@theme` para reducir repetición.                         |
+| El template no define diseño mobile; el drawer es interpretación                        | Mantener el contenido del sidebar idéntico; solo cambia el contenedor. Fijar el breakpoint en `md` (768px).                    |
+| Los SVG inline del template pueden variar sutilmente al componentizar                   | Centralizar en `components/shared/icons.tsx` con los mismos `viewBox` y `stroke-width` del template.                           |
+| Las métricas de Fredoka/Nunito vía `next/font` pueden diferir del `<link>` del template | Verificar que carguen los pesos (Fredoka 400/500/600/700, Nunito 400-800) y comparar contra `references/screenshots/feed.png`. |
 
-| Riesgo                                                                                                                                        | Mitigación                                                                                                                                       |
-| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `next/font/google` necesita salida a `fonts.googleapis.com` en el primer build; sin red el build falla.                                       | Verificar temprano en el paso 2. Si el entorno no tiene red, caer a `<link>` a Google Fonts como en el mockup, o a fuentes locales en `public/`. |
-| Los SVG del mockup están en atributos `width`/`height` fijos; copiarlos con esos atributos ignora `size-*` y rompe el layout flexible.        | Todos los iconos de `components/icons.tsx` se definen sin `width`/`height`; el tamaño sale siempre de `size-*`.                                  |
-| El drawer necesita estado de cliente y la página era toda server; un `"use client"` mal puesto arrastra los datos mock al bundle del cliente. | `page.tsx` sigue siendo server component; solo `sidebar.tsx`, `post-card.tsx` y `mobile-nav.tsx` llevan `"use client"`.                          |
+## What is **not** in this spec
 
-## Qué **no** entra en esta spec
+- Autenticación, login y sesiones.
+- Base de datos ni persistencia de datos.
+- Funcionalidad de botones/links (navegación, crear publicación, editar, reaccionar, comentar, logout).
+- Las otras 13 pantallas del catálogo.
+- Subida real de fotos (placeholder visual).
+- Reacciones y comentarios funcionales.
 
-- Autenticación, roles, login, activación de cuenta.
-- Base de datos, API, server actions.
-- Las otras 14 pantallas de `references/pantallas/`.
-- Persistencia de likes, comentarios, subida de fotos.
-- Estados vacíos, de error y de carga.
-
-Cada una de esas, si aterriza, va en su propia spec.
+Cada uno de esos, si llega, va en su propia spec.

@@ -3,31 +3,33 @@ import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 
 const fredoka = Fredoka({
-  variable: "--font-fredoka-src",
-  weight: ["500", "600"],
+  variable: "--font-fredoka",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const nunito = Nunito({
-  variable: "--font-nunito-src",
-  weight: ["400", "600", "700", "800"],
+  variable: "--font-nunito",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "OpenDayCare",
-  description: "Muro de la guardería · Sala Soles",
+  description: "Gestión de guardería · Sala Soles",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="es"
-      className={`${fredoka.variable} ${nunito.variable} h-full`}
+      className={`${fredoka.variable} ${nunito.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-cream font-nunito text-brown antialiased">
-        {children}
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

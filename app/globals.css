@@ -1,51 +1,39 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  /* colores literales */
-  --color-cream: #f6ecdf;
+  --color-canvas: #f6ecdf;
+  --color-ink: #3f362e;
   --color-card: #fffdf9;
-  --color-border: #ece0d0;
-  --color-border-soft: #f0e6d8;
-  --color-divider: #e7dac8;
-  --color-brown: #3f362e;
-  --color-brown-body: #4a4038;
-  --color-text-soft: #a89a8b;
-  --color-text-faint: #94887b;
-  --color-text-nav: #6e6359;
-  --color-text-today: #8a7c6d;
-  --color-terracotta: #d9583c;
-  --color-terracotta-strong: #c5503a;
-  --color-heart: #e0654a;
-  --color-coral-soft: #fbe3d8;
-  --color-orange: #f2937a;
-  --color-orange-soft: #f8c3a8;
-  --color-orange-button: #ee8164;
-  --color-amber: #f4ece1;
-  --color-photo-frame: #dbcdba;
-  --color-photo-text: #b0a290;
-  --color-green: #3e9b6c;
-  --color-green-soft: #cfebd8;
-  --color-sky: #2e89a6;
-  --color-sky-soft: #c7e7f1;
-  --color-indigo: #4e72c8;
-  --color-indigo-soft: #ccd8f4;
-  --color-avatar-child: #a9d9e8;
-  --color-avatar-child-text: #1f7a93;
+  --color-line: #ece0d0;
+  --color-accent: #d9583c;
+  --color-accent-soft: #f2937a;
+  --color-accent-warm: #ee8164;
+  --color-staff: #2e89a6;
+  --color-staff-deep: #1f7a93;
+  --color-achievement: #3e9b6c;
+  --color-announcement: #4e72c8;
+  --color-muted: #a89a8b;
+  --color-soft: #fbe3d8;
+  --color-allergy-warm: #fbd8cc;
+  --color-allergy-pink: #f9d2de;
+  --color-parent-active: #cfebd8;
+  --color-parent-pending: #f7e7a6;
+  --color-canvas-warm: #fbf4ec;
 }
 
 @theme inline {
-  /* fuentes: resuelven la variable de next/font */
-  --font-fredoka: var(--font-fredoka-src);
-  --font-nunito: var(--font-nunito-src);
+  --font-head: var(--font-fredoka);
+  --font-body: var(--font-nunito);
 }
 
-::-webkit-scrollbar {
-  width: 10px;
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-nunito), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #e4d6c4;
-  border-radius: 8px;
-  border: 3px solid transparent;
-  background-clip: content-box;
+/* Kid card hover effect */
+.kid-card-hover:hover {
+  transform: translateY(-2px);
 }
