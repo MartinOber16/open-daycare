@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { kids } from '@/app/_data/kids';
+import { kids, addKidToMock, Kid } from '@/app/_data/kids';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { MobileNav } from '@/components/shared/MobileNav';
 import { SearchIcon } from '@/components/shared/icons';
 import { KidCard } from '@/components/kids/KidCard';
+import { AddKidModal } from '@/components/kids/AddKidModal';
 
 function normalize(str: string): string {
   return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -13,10 +14,15 @@ function normalize(str: string): string {
 
 export default function KidsPage() {
   const [query, setQuery] = useState('');
+  const [showAddKid, setShowAddKid] = useState(false);
 
   const filtered = kids.filter((kid) =>
     normalize(kid.fullName).includes(normalize(query))
   );
+
+  const handleAddKid = (kid: Kid) => {
+    addKidToMock(kid);
+  };
 
   return (
     <div className="flex flex-1 min-h-screen bg-canvas">
@@ -33,8 +39,9 @@ export default function KidsPage() {
                 Niños
               </h1>
             </div>
-            <a
-              href="#"
+            <button
+              type="button"
+              onClick={() => setShowAddKid(true)}
               className="flex items-center gap-2 px-[18px] py-[11px] rounded-[14px] bg-gradient-to-b from-[#F4977E] to-[#EE8164] text-white font-extrabold text-[14.5px] shadow-[0_8px_18px_-8px_rgba(238,129,100,0.7)]"
             >
               <svg
@@ -50,7 +57,7 @@ export default function KidsPage() {
                 <path d="M12 5v14M5 12h14" />
               </svg>
               Agregar niño
-            </a>
+            </button>
           </div>
 
           <div className="flex items-center gap-[11px] bg-card border border-line rounded-[14px] px-4 py-3 mb-[22px]">
@@ -80,6 +87,11 @@ export default function KidsPage() {
           </div>
         </div>
       </main>
+      <AddKidModal
+        open={showAddKid}
+        onClose={() => setShowAddKid(false)}
+        onAdd={handleAddKid}
+      />
     </div>
   );
 }

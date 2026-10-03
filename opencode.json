@@ -1,27 +1,33 @@
 {
 	"$schema": "https://opencode.ai/config.json",
+	"lsp": true,
 	"command": {
 		"spec": {
 			"description": "Crea especificaciones de pantallas y funcionalidades",
 			"template": "Carga y sigue la skill spec en .agents/skills/spec/SKILL.md.\n\nFeature: $ARGUMENTS"
-		},
-		"spec-impl": {
-			"description": "Implementa especificaciones de pantallas y funcionalidades",
-			"template": "Carga y sigue la skill spec-impl en .agents/skills/spec-impl/SKILL.md.\n\nFeature: $ARGUMENTS"
 		}
+	},
+	"references": {
+		"docs": {
+			"path": "../07-DB-Schema",
+			"description": "Documentación de la base de datos y esquema de datos"
+		}
+	},
+	"permission": {
+		"external_directory": {
+			"/tmp/**": "allow"
+		},
+		"bash": "allow"
 	},
 	"mcp": {
 		"playwright": {
 			"type": "local",
 			"command": [
-				"/Users/strider/.nvm/versions/node/v22.20.0/bin/npx",
+				"npx.cmd",
 				"-y",
 				"@playwright/mcp@latest"
 			],
-			"enabled": true,
-			"environment": {
-				"PATH": "/Users/strider/.nvm/versions/node/v22.20.0/bin:/usr/local/bin:/usr/bin:/bin"
-			}
+			"enabled": true
 		}
 	}
 }

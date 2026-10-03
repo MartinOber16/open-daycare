@@ -18,12 +18,21 @@ const navIcon: Record<NavIcon, typeof HomeIcon> = {
   user: UserIcon,
 };
 
-export function SidebarContent({ pathname }: { pathname?: string }) {
+export function SidebarContent({
+  pathname,
+  onOpenNewPost,
+}: {
+  pathname?: string;
+  onOpenNewPost?: () => void;
+}) {
   const items = pathname ? getActiveNav(pathname) : [];
 
   return (
     <>
-      <Link href="/" className="flex items-center gap-[11px] pt-1 px-2 pb-[22px]">
+      <Link
+        href="/"
+        className="flex items-center gap-[11px] pt-1 px-2 pb-[22px]"
+      >
         <span className="w-[38px] h-[38px] rounded-[12px] bg-[linear-gradient(155deg,#F8C3A8,#F2937A)] flex items-center justify-center shrink-0 text-white">
           <SunIcon className="w-[21px] h-[21px]" />
         </span>
@@ -37,13 +46,14 @@ export function SidebarContent({ pathname }: { pathname?: string }) {
         </span>
       </Link>
 
-      <a
-        href="#"
+      <button
+        type="button"
+        onClick={onOpenNewPost}
         className="flex items-center justify-center gap-2 w-full p-3 rounded-[14px] text-white font-extrabold text-[14.5px] mb-[18px] bg-[linear-gradient(180deg,#F4977E,#EE8164)] shadow-[0_8px_18px_-8px_rgba(238,129,100,0.75)]"
       >
         <PlusIcon className="w-[17px] h-[17px]" />
         Nueva publicación
-      </a>
+      </button>
 
       <nav className="flex flex-col gap-1 flex-1">
         {items.map((item) => {
@@ -93,10 +103,16 @@ export function SidebarContent({ pathname }: { pathname?: string }) {
   );
 }
 
-export function Sidebar({ pathname }: { pathname?: string }) {
+export function Sidebar({
+  pathname,
+  onOpenNewPost,
+}: {
+  pathname?: string;
+  onOpenNewPost?: () => void;
+}) {
   return (
     <aside className="hidden md:flex flex-col w-[248px] shrink-0 bg-card border-r border-line sticky top-0 h-screen py-6 px-4">
-      <SidebarContent pathname={pathname} />
+      <SidebarContent pathname={pathname} onOpenNewPost={onOpenNewPost} />
     </aside>
   );
 }
