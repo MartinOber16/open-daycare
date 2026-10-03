@@ -280,3 +280,107 @@ export function parentCountLabel(parents: LinkedParent[]): string {
   if (n === 1) return '1 padre vinculado';
   return `${n} padres vinculados`;
 }
+
+export const AVATAR_COLORS = [
+  { bg: '#A9D9E8', color: '#1F7A93' },
+  { bg: '#F4B8CC', color: '#C44A7A' },
+  { bg: '#B9DEC4', color: '#3E8B62' },
+  { bg: '#F4DC8E', color: '#9A7B1E' },
+  { bg: '#C9B6E8', color: '#7B5FC0' },
+];
+
+export function randomAvatarBg(): string {
+  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)].bg;
+}
+
+export function randomAvatarColor(): string {
+  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)].color;
+}
+
+export function generateKidId(fullName: string): string {
+  return fullName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+export function calculateAge(birthDate: string): number {
+  const parts = birthDate.split('/');
+  if (parts.length !== 3) return 0;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const year = parseInt(parts[2], 10);
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return 0;
+  const birth = new Date(year, month, day);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age < 0 ? 0 : age;
+}
+
+const MONTH_SHORT = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+];
+
+export function formatBirthDateDisplay(ddmmyyyy: string): string {
+  const parts = ddmmyyyy.split('/');
+  if (parts.length !== 3) return ddmmyyyy;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  if (isNaN(day) || isNaN(month) || month < 0 || month > 11) return ddmmyyyy;
+  return `${day} ${MONTH_SHORT[month]} ${parts[2]}`;
+}
+
+export function isValidDate(ddmmyyyy: string): boolean {
+  const parts = ddmmyyyy.split('/');
+  if (parts.length !== 3) return false;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > new Date().getFullYear()) return false;
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+export function parseAllergyText(text: string): AllergyType[] {
+  if (!text.trim()) return [];
+  const lower = text.toLowerCase().trim();
+  const result: AllergyType[] = [];
+  if (lower.includes('maní') || lower.includes('mani')) result.push('peanut');
+  if (lower.includes('lactosa')) result.push('lactose');
+  if (lower.includes('gluten')) result.push('gluten');
+  if (result.length === 0) return [];
+  return [...new Set(result)];
+}
+
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+export function addKidToMock(kid: Kid): void {
+  kids.push(kid);
+}

@@ -1,16 +1,29 @@
+'use client';
+
+import { use } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { getKidById, PARENT_STATUS_BADGE, PARENT_STATUS_LABEL } from '@/app/_data/kids';
+import { getKidById, PARENT_STATUS_BADGE, PARENT_STATUS_LABEL, LinkedParent, kids } from '@/app/_data/kids';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { MobileNav } from '@/components/shared/MobileNav';
 import { ChevronLeftIcon, AlertTriangleIcon, EditIcon } from '@/components/shared/icons';
+import { LinkParentModal } from '@/components/kids/LinkParentModal';
 
 interface KidProfileProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function KidProfilePage({ params }: KidProfileProps) {
-  const { id } = await params;
+export default function KidProfilePage({ params }: KidProfileProps) {
+  const { id } = use(params);
   const kid = getKidById(id);
+  const [showLinkParent, setShowLinkParent] = useState(false);
+
+  const handleLinkParent = (parent: LinkedParent) => {
+    const targetKid = kids.find((k) => k.id === id);
+    if (targetKid) {
+      targetKid.linkedParents.push(parent);
+    }
+  };
 
   if (!kid) {
     return (
@@ -189,9 +202,10 @@ export default async function KidProfilePage({ params }: KidProfileProps) {
                       </span>
                     </div>
                   ))}
-                  <a
-                    href="#"
-                    className="flex items-center gap-[12px] pt-2"
+                  <button
+                    type="button"
+                    onClick={() => setShowLinkParent(true)}
+                    className="flex items-center gap-[12px] pt-2 bg-none border-none cursor-pointer p-0"
                   >
                     <span className="w-10 h-10 rounded-full border-[1.5px] border-dashed border-[#D8CBBA] flex items-center justify-center text-[#B0A290]">
                       <svg
@@ -210,13 +224,19 @@ export default async function KidProfilePage({ params }: KidProfileProps) {
                     <span className="font-extrabold text-[14.5px] text-[#C5503A]">
                       Vincular otro padre
                     </span>
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </main>
+      <LinkParentModal
+        open={showLinkParent}
+        kidName={kid.fullName}
+        onClose={() => setShowLinkParent(false)}
+        onLink={handleLinkParent}
+      />
     </div>
   );
 }
