@@ -1,5 +1,3 @@
-import { kids } from './kids';
-
 export type NewPostType =
   | 'meal'
   | 'nap'
@@ -43,15 +41,18 @@ export type NewPostTarget =
     }
   | { type: 'all'; label: string };
 
-export function getNewPostTargets(): NewPostTarget[] {
-  const kidTargets: NewPostTarget[] = kids.map((kid) => ({
-    type: 'kid',
-    id: kid.id,
-    name: kid.fullName,
-    initial: kid.initial,
-    avatarBg: kid.avatarBg,
-    avatarColor: kid.avatarColor,
-  }));
+export function getNewPostTargets(
+  children?: { id: string; full_name: string }[],
+): NewPostTarget[] {
+  const kidTargets: NewPostTarget[] =
+    children?.map((child) => ({
+      type: 'kid',
+      id: child.id,
+      name: child.full_name,
+      initial: child.full_name.charAt(0).toUpperCase(),
+      avatarBg: '#A9D9E8',
+      avatarColor: '#1F7A93',
+    })) || [];
 
   return [...kidTargets, { type: 'all', label: 'Toda la sala' }];
 }

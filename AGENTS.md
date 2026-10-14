@@ -25,26 +25,25 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `app/page.tsx` is still the default create-next-app scaffold — the real UI has not been built yet.
 - `references/pantallas/*.dc.html` are the design source of truth for each screen; open `references/pantallas/index.dc.html` for the catalog of 15 screens. `references/screenshots/*.png` are rendered previews. Implement against these: fonts are Fredoka (headings) + Nunito (body) on a warm palette (background `#f6ecdf`, accent `#d9583c`/`#f2937a`, staff blue `#2e89a6`, family purple `#7b5fc0`).
 
-## Backend: Supabase
-
-- Supabase is the backend. Project ref `qzvutyhfgmoohiditlli` (`https://qzvutyhfgmoohiditlli.supabase.co`), reachable through the **Supabase MCP server** — prefer MCP over the CLI/Management API.
-- Current state: **zero tables and zero migrations applied** in `public`. The schema is still to be designed; the data model reference lives in the `docs` reference (`../07-DB-Schema`).
-- `@supabase/supabase-js` and `@supabase/ssr` are **not installed yet**. Env: `.env`/`.env.template` currently only define `SUPABASE_DB_PASSWORD`. Anything the app needs (e.g. `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) must be added to `.env.template` when introduced.
-- No `supabase/` directory and the Supabase CLI is not installed — don't assume `supabase link`, `supabase start`, or local stack commands work.
-- MCP workflow conventions:
-  - DDL / schema / migration changes → `supabase_apply_migration` (with a `snake_case` name), **never** `supabase_execute_sql`.
-  - Read-only inspection and data queries → `supabase_execute_sql`, `supabase_list_tables`, `supabase_list_migrations`, `supabase_list_extensions`.
-  - After DDL changes, run `supabase_get_advisors` (both `security` and `performance`) and fix what it reports.
-  - Debug unexpected behavior with `supabase_query_logs` (ClickHouse, max 24h window; always pass explicit ISO start/end).
-  - For risky/experimental DB work prefer a dev branch: `supabase_create_branch` → work → `supabase_merge_branch` / `supabase_delete_branch`.
-  - Never commit secrets. `SUPABASE_DB_PASSWORD` and any `service_role`/secret key stay in `.env` only.
-- Non-negotiable Supabase rules (see the `supabase` skill for the full list): enable RLS on every table in exposed schemas, grant Data API access explicitly when needed, never authorize on `user_metadata`, always pair `TO authenticated` with an ownership predicate, use `WITH (security_invoker = true)` on views, and use the `TO` clause instead of the deprecated `auth.role()`.
-
 ## MCPs
 
 - Playwright: screenshots and any Playwright output go in `.playwright-mcp/` (gitignored).
 - Context7: use it to fetch current framework docs instead of relying on training data.
-- Supabase: schema/migrations, data queries, advisors, and logs — see **Backend: Supabase** above.
+- Supabase: database, auth, edge functions, storage, and more. Use MCP tools for SQL execution, migrations, advisors, and logs.
+
+## Supabase
+
+- Project uses Supabase for database, authentication, and backend services.
+- **Client helpers**: Use `@supabase/ssr` + `@supabase/supabase-js` packages for all database interactions from the Next.js app.
+  - Server components: import `createClient` from `@/utils/supabase/server` (uses `createServerClient` with cookie-based session handling).
+  - Client components: import `createClient` from `@/utils/supabase/client` (uses `createBrowserClient`).
+  - Middleware: import `createClient` from `@/utils/supabase/middleware` (session refresh on each request).
+- **Migrations are mandatory**: Every database manipulation (DDL or DML) MUST be applied via `apply_migration`. Never use `execute_sql` for permanent changes — only for temporary queries or debugging.
+- **Schema changes**: iterate with `execute_sql` if needed, then commit via `apply_migration` with a clean migration file.
+- **Seed data**: insert via migration, not raw SQL. Use `ON CONFLICT DO NOTHING` for idempotency.
+- **RLS**: enable Row Level Security on every table in exposed schemas. Never use `user_metadata` for authorization — use `raw_app_meta_data` / `app_metadata` instead.
+- **Security**: never expose `service_role` key in client code. Use publishable keys for frontend. Views bypass RLS by default — use `security_invoker = true`.
+- **CLI**: use `supabase migration new <name>` to create migration files. Check CLI version with `supabase --version`.
 
 ## Agents
 
@@ -55,14 +54,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - /spec Usaremos esta habilidad para crear las especificaciones.
 - /spec-impl Usaremos esta skill para hacer las implementaciones.
 - /verify-spec Usaremos este comando para verificar los criterios de aceptación de una spec.
+- **Database specs**: Cualquier archivo de especificación relacionado con la base de datos debe guardarse en la carpeta `specs/database/`.
 
-## Skills (installed under `.agents/skills/`, mirrored as junctions in `.claude/skills/`)
+## Installed Skills
 
-Load a skill with the `skill` tool when the task matches it.
-
-- `supabase` (from `supabase/agent-skills`, v0.1.2) — **use for any Supabase work**: DB/Auth/Storage/Realtime/Edge Functions/Cron/Queues/Vectors, `supabase-js`/`@supabase/ssr` integrations, auth/session/JWT/cookies, CLI/MCP, schema changes, migrations, security audits, RLS, Postgres extensions, error troubleshooting, and log queries. Also fetch `https://supabase.com/changelog.md` first — Supabase breaks things between versions.
-- `supabase-postgres-best-practices` (from `supabase/agent-skills`, v1.1.1) — **load before writing any SQL**: table/column design, constraints, migrations, indexes, RLS policies, triggers, functions, pg_cron/pgmq, pgvector, plus diagnosing slow queries, high CPU, timeouts, EXPLAIN plans, connection exhaustion, locking and bloat. Detailed rules live in `.agents/skills/supabase-postgres-best-practices/references/` (`query-*`, `conn-*`, `security-*`, `schema-*`, `lock-*`, `data-*`, `monitor-*`, `advanced-*`).
-- `spec` / `spec-impl` — spec-driven workflow described above.
+- **supabase**: Use for any Supabase-related task (database, auth, edge functions, realtime, storage, RLS, migrations, security audits). Loads comprehensive security guidelines, CLI/MCP usage, and best practices.
+- **supabase-postgres-best-practices**: Use when writing, reviewing, or optimizing Postgres queries, schema designs, or database configurations. Covers query performance, connection management, security & RLS, schema design, concurrency, and advanced features.
 
 ## Reglas de código
 
