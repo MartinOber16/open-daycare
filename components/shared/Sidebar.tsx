@@ -1,14 +1,18 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getActiveNav, sidebarUser } from '@/app/_data/mock';
+import { createClient } from '@/utils/supabase/client';
+import { getActiveNav } from '@/app/_data/mock';
 import {
   BellIcon,
   HomeIcon,
   KidsIcon,
-  LogoutIcon,
   PlusIcon,
   SunIcon,
   UserIcon,
 } from '@/components/shared/icons';
+import { LogoutButton } from '@/components/shared/LogoutButton';
 import type { NavIcon } from '@/app/_data/mock';
 
 const navIcon: Record<NavIcon, typeof HomeIcon> = {
@@ -18,12 +22,20 @@ const navIcon: Record<NavIcon, typeof HomeIcon> = {
   user: UserIcon,
 };
 
+interface UserInfo {
+  name: string;
+  role: string;
+  initial: string;
+}
+
 export function SidebarContent({
   pathname,
   onOpenNewPost,
+  userInfo,
 }: {
   pathname?: string;
   onOpenNewPost?: () => void;
+  userInfo: UserInfo;
 }) {
   const items = pathname ? getActiveNav(pathname) : [];
 
@@ -79,24 +91,17 @@ export function SidebarContent({
       <div className="border-t border-line pt-[14px] mt-[10px]">
         <div className="flex items-center gap-[11px] py-[6px] px-2">
           <span className="w-[38px] h-[38px] rounded-full bg-accent-soft text-white font-head font-semibold text-[16px] flex items-center justify-center shrink-0">
-            {sidebarUser.initial}
+            {userInfo.initial}
           </span>
           <span className="flex-1 min-w-0">
             <span className="block font-extrabold text-[14px] text-ink">
-              {sidebarUser.name}
+              {userInfo.name}
             </span>
             <span className="block text-[12px] text-muted">
-              {sidebarUser.role}
+              {userInfo.role}
             </span>
           </span>
-          <Link
-            href="#"
-            title="Cerrar sesión"
-            aria-label="Cerrar sesión"
-            className="shrink-0 w-8 h-8 rounded-[10px] bg-canvas text-[#94887B] flex items-center justify-center"
-          >
-            <LogoutIcon className="w-4 h-4" />
-          </Link>
+          <LogoutButton />
         </div>
       </div>
     </>
@@ -110,9 +115,37 @@ export function Sidebar({
   pathname?: string;
   onOpenNewPost?: () => void;
 }) {
+  const [userInfo, setUserInfo] = useState<UserInfo>({ name: '', role: '', initial: '' });
+
+  useEffect(() => {
+    async function fetchUserInfo() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setUserInfo({ name: '', role: '', initial: '' });
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .single();
+
+      const name = profile?.full_name || user.email?.split('@')[0] || '';
+      const initial = name.charAt(0).toUpperCase();
+      const roleLabel = profile?.role === 'staff' ? 'Personal' : profile?.role === 'admin' ? 'Administrador' : 'Familia';
+
+      setUserInfo({ name, role: roleLabel, initial });
+    }
+
+    fetchUserInfo();
+  }, []);
+
   return (
     <aside className="hidden md:flex flex-col w-[248px] shrink-0 bg-card border-r border-line sticky top-0 h-screen py-6 px-4">
-      <SidebarContent pathname={pathname} onOpenNewPost={onOpenNewPost} />
+      <SidebarContent pathname={pathname} onOpenNewPost={onOpenNewPost} userInfo={userInfo} />
     </aside>
   );
 }

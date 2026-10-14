@@ -1,26 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createChild } from '@/app/_actions/children';
 import {
-  Kid,
-  generateKidId,
-  calculateAge,
-  formatBirthDateDisplay,
-  parseAllergyText,
-  randomAvatarBg,
-  randomAvatarColor,
   isValidDate,
-} from '@/app/_data/kids';
-
-const ROOMS = ['Soles', 'Estrellas', 'Arcoíris'];
+  parseAllergyText,
+} from '@/app/_lib/kid-utils';
+import type { Room } from '@/app/_actions/children';
 
 interface AddKidModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (kid: Kid) => void;
+  onAdd: () => void;
+  rooms?: Room[];
+  daycareId?: string;
 }
 
-export function AddKidModal({ open, onClose, onAdd }: AddKidModalProps) {
+export function AddKidModal({ open, onClose, onAdd, rooms = [] }: AddKidModalProps) {
   const [fullName, setFullName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [room, setRoom] = useState('');
@@ -30,6 +26,7 @@ export function AddKidModal({ open, onClose, onAdd }: AddKidModalProps) {
   const [nameError, setNameError] = useState('');
   const [dateError, setDateError] = useState('');
   const [roomError, setRoomError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const handleDateChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 8);
@@ -41,7 +38,7 @@ export function AddKidModal({ open, onClose, onAdd }: AddKidModalProps) {
     setBirthDate(formatted);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     let valid = true;
     setNameError('');
     setDateError('');
@@ -68,43 +65,37 @@ export function AddKidModal({ open, onClose, onAdd }: AddKidModalProps) {
 
     if (!valid) return;
 
-    const newKid: Kid = {
-      id: generateKidId(fullName),
-      firstName: fullName.trim().split(' ')[0],
-      lastName: fullName.trim().split(' ').slice(1).join(' '),
-      fullName: fullName.trim(),
-      initial: fullName.trim().charAt(0).toUpperCase(),
-      age: calculateAge(birthDate),
-      room,
-      birthDate: formatBirthDateDisplay(birthDate),
-      enrollmentDate: (() => {
-        const now = new Date();
-        const months = [
-          'ene',
-          'feb',
-          'mar',
-          'abr',
-          'may',
-          'jun',
-          'jul',
-          'ago',
-          'sep',
-          'oct',
-          'nov',
-          'dic',
-        ];
-        return `${months[now.getMonth()]} ${now.getFullYear()}`;
-      })(),
-      allergies: parseAllergyText(allergies),
-      medicalNotes: medicalNotes.trim(),
-      linkedParents: [],
-      avatarBg: randomAvatarBg(),
-      avatarColor: randomAvatarColor(),
-    };
+    setSaving(true);
 
-    onAdd(newKid);
-    resetForm();
-    onClose();
+    try {
+      const parts = birthDate.split('/');
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const year = parseInt(parts[2], 10);
+      const isoBirthDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      const now = new Date();
+      const isoEnrolledAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      const allergyTags = parseAllergyText(allergies);
+
+      await createChild({
+        room_id: room,
+        full_name: fullName.trim(),
+        birth_date: isoBirthDate,
+        enrolled_at: isoEnrolledAt,
+        medical_notes: medicalNotes.trim() || undefined,
+        allergy_tags: allergyTags.length > 0 ? allergyTags : undefined,
+      });
+
+      resetForm();
+      onAdd();
+    } catch (error) {
+      console.error('Error creating child:', error);
+      setDateError('Error al crear el niño. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetForm = () => {
@@ -167,9 +158,10 @@ export function AddKidModal({ open, onClose, onAdd }: AddKidModalProps) {
           <button
             type="button"
             onClick={handleSave}
-            className="text-[15px] font-extrabold text-[#D9583C] hover:text-[#C44A2E]"
+            disabled={saving}
+            className="text-[15px] font-extrabold text-[#D9583C] hover:text-[#C44A2E] disabled:opacity-50"
           >
-            Guardar
+            {saving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
 
@@ -226,9 +218,9 @@ export function AddKidModal({ open, onClose, onAdd }: AddKidModalProps) {
                   <option value="" disabled>
                     Seleccionar sala
                   </option>
-                  {ROOMS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
                     </option>
                   ))}
                 </select>

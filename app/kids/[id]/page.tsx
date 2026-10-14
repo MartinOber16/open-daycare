@@ -1,35 +1,26 @@
-'use client';
-
-import { use } from 'react';
-import { useState } from 'react';
 import Link from 'next/link';
-import { getKidById, PARENT_STATUS_BADGE, PARENT_STATUS_LABEL, LinkedParent, kids } from '@/app/_data/kids';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { MobileNav } from '@/components/shared/MobileNav';
 import { ChevronLeftIcon, AlertTriangleIcon, EditIcon } from '@/components/shared/icons';
-import { LinkParentModal } from '@/components/kids/LinkParentModal';
+import { createClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
+import { getChildById } from '@/app/_actions/children';
+import { ParentsSection } from '@/components/kids/ParentsSection';
+import {
+  calculateAgeFromISO,
+  formatBirthDateDisplay,
+  stringToAvatarColors,
+} from '@/app/_lib/kid-utils';
 
-interface KidProfileProps {
-  params: Promise<{ id: string }>;
-}
+export default async function KidProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const child = await getChildById(id);
 
-export default function KidProfilePage({ params }: KidProfileProps) {
-  const { id } = use(params);
-  const kid = getKidById(id);
-  const [showLinkParent, setShowLinkParent] = useState(false);
-
-  const handleLinkParent = (parent: LinkedParent) => {
-    const targetKid = kids.find((k) => k.id === id);
-    if (targetKid) {
-      targetKid.linkedParents.push(parent);
-    }
-  };
-
-  if (!kid) {
+  if (!child) {
     return (
       <div className="flex flex-1 min-h-screen bg-canvas">
-        <Sidebar />
-        <MobileNav />
+        <Sidebar pathname="/kids" />
+        <MobileNav pathname="/kids" />
         <main className="flex-1 min-w-0 h-screen overflow-y-auto">
           <div className="max-w-[820px] w-full mx-auto px-5 md:px-10 pt-16 md:pt-[34px] pb-20">
             <Link
@@ -56,7 +47,25 @@ export default function KidProfilePage({ params }: KidProfileProps) {
     );
   }
 
-  const hasAllergies = kid.allergies.length > 0;
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: room, error: roomError } = await supabase
+    .from('rooms')
+    .select('name')
+    .eq('id', child.room_id)
+    .single();
+
+  const roomName = roomError ? 'Sin sala' : room.name;
+  const age = calculateAgeFromISO(child.birth_date);
+  const birthDateDisplay = formatBirthDateDisplay(child.birth_date);
+  const enrolledDisplay = formatBirthDateDisplay(child.enrolled_at);
+
+  const hasAllergies = (child.allergy_tags || []).length > 0;
+  const medicalNotes = child.medical_notes || '';
+
+  const initial = child.full_name.charAt(0).toUpperCase();
+  const colors = stringToAvatarColors(child.full_name);
 
   return (
     <div className="flex flex-1 min-h-screen bg-canvas">
@@ -73,22 +82,20 @@ export default function KidProfilePage({ params }: KidProfileProps) {
           </Link>
 
           <div className="flex gap-[26px] items-start flex-wrap">
-            {/* Left column */}
             <div className="flex-1 min-w-[300px] flex flex-col gap-[18px]">
-              {/* Header */}
               <div className="flex items-center gap-[18px]">
                 <div
                   className="w-[84px] h-[84px] rounded-full font-head font-semibold text-[34px] flex items-center justify-center shrink-0"
-                  style={{ background: kid.avatarBg, color: kid.avatarColor }}
+                  style={{ background: colors.bg, color: colors.color }}
                 >
-                  {kid.initial}
+                  {initial}
                 </div>
                 <div className="flex-1">
                   <h1 className="font-head font-semibold text-[28px] text-ink m-0">
-                    {kid.fullName}
+                    {child.full_name}
                   </h1>
                   <p className="m-0 mt-1 text-[15px] text-[#94887B]">
-                    {kid.age} años · Sala {kid.room}
+                    {age} años · Sala {roomName}
                   </p>
                 </div>
                 <a
@@ -100,8 +107,7 @@ export default function KidProfilePage({ params }: KidProfileProps) {
                 </a>
               </div>
 
-              {/* Allergies card */}
-              {hasAllergies && (
+              {hasAllergies && medicalNotes && (
                 <div className="flex gap-[14px] bg-[#FBDAD6] rounded-[16px] px-[18px] py-4">
                   <div className="w-10 h-10 rounded-[11px] bg-[#F4A8A0] flex items-center justify-center shrink-0">
                     <AlertTriangleIcon className="w-[22px] h-[22px] text-white" />
@@ -111,38 +117,36 @@ export default function KidProfilePage({ params }: KidProfileProps) {
                       Alergias y notas
                     </div>
                     <div className="text-[#B25249] text-[14.5px] leading-relaxed">
-                      {kid.medicalNotes}
+                      {medicalNotes}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Data table */}
               <div className="bg-card border border-line rounded-[16px] overflow-hidden">
                 <div className="flex justify-between px-[18px] py-[15px] border-b border-[#F0E6D8]">
                   <span className="text-[#94887B] text-[14.5px]">
                     Fecha de nacimiento
                   </span>
                   <span className="font-extrabold text-ink text-[14.5px]">
-                    {kid.birthDate}
+                    {birthDateDisplay}
                   </span>
                 </div>
                 <div className="flex justify-between px-[18px] py-[15px] border-b border-[#F0E6D8]">
                   <span className="text-[#94887B] text-[14.5px]">Sala</span>
                   <span className="font-extrabold text-ink text-[14.5px]">
-                    {kid.room}
+                    {roomName}
                   </span>
                 </div>
                 <div className="flex justify-between px-[18px] py-[15px]">
                   <span className="text-[#94887B] text-[14.5px]">Ingreso</span>
                   <span className="font-extrabold text-ink text-[14.5px]">
-                    {kid.enrollmentDate}
+                    {enrolledDisplay}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Right column */}
             <div className="w-[300px] shrink-0 flex flex-col gap-[14px]">
               <a
                 href="#"
@@ -164,79 +168,11 @@ export default function KidProfilePage({ params }: KidProfileProps) {
                 Resumen del día
               </a>
 
-              <div className="bg-card border border-line rounded-[16px] px-[18px] py-4">
-                <div className="text-[12.5px] font-extrabold tracking-[0.8px] text-[#8A7C6D] mb-[14px]">
-                  PADRES VINCULADOS
-                </div>
-                <div className="flex flex-col gap-[14px]">
-                  {kid.linkedParents.map((parent, i) => (
-                    <div key={i} className="flex items-center gap-[12px]">
-                      <div
-                        className="w-10 h-10 rounded-full font-head font-semibold text-[16px] flex items-center justify-center shrink-0"
-                        style={{
-                          background: parent.avatarBg,
-                          color: parent.avatarColor,
-                        }}
-                      >
-                        {parent.initial}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-extrabold text-[14.5px] text-ink truncate">
-                          {parent.name}
-                        </div>
-                        <div className="text-[12.5px] text-muted">
-                          {parent.role} ·{' '}
-                          {parent.status === 'active'
-                            ? 'activa'
-                            : 'invitación enviada'}
-                        </div>
-                      </div>
-                      <span
-                        className="flex-none text-[10.5px] font-extrabold px-[9px] py-1 rounded-full"
-                        style={{
-                          background: PARENT_STATUS_BADGE[parent.status].bg,
-                          color: PARENT_STATUS_BADGE[parent.status].color,
-                        }}
-                      >
-                        {PARENT_STATUS_LABEL[parent.status]}
-                      </span>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setShowLinkParent(true)}
-                    className="flex items-center gap-[12px] pt-2 bg-none border-none cursor-pointer p-0"
-                  >
-                    <span className="w-10 h-10 rounded-full border-[1.5px] border-dashed border-[#D8CBBA] flex items-center justify-center text-[#B0A290]">
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                    </span>
-                    <span className="font-extrabold text-[14.5px] text-[#C5503A]">
-                      Vincular otro padre
-                    </span>
-                  </button>
-                </div>
-              </div>
+              <ParentsSection kidName={child.full_name} childId={child.id} />
             </div>
           </div>
         </div>
       </main>
-      <LinkParentModal
-        open={showLinkParent}
-        kidName={kid.fullName}
-        onClose={() => setShowLinkParent(false)}
-        onLink={handleLinkParent}
-      />
     </div>
   );
 }

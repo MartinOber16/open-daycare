@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { SidebarContent } from '@/components/shared/Sidebar';
 import { CloseIcon, MenuIcon } from '@/components/shared/icons';
 
@@ -8,8 +9,15 @@ interface MobileNavProps {
   pathname?: string;
 }
 
+interface UserInfo {
+  name: string;
+  role: string;
+  initial: string;
+}
+
 export function MobileNav({ pathname }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const [userInfo, setUserInfo] = useState<UserInfo>({ name: '', role: '', initial: '' });
 
   useEffect(() => {
     if (!open) return;
@@ -19,6 +27,32 @@ export function MobileNav({ pathname }: MobileNavProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
+
+  useEffect(() => {
+    async function fetchUserInfo() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setUserInfo({ name: '', role: '', initial: '' });
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .single();
+
+      const name = profile?.full_name || user.email?.split('@')[0] || '';
+      const initial = name.charAt(0).toUpperCase();
+      const roleLabel = profile?.role === 'staff' ? 'Personal' : profile?.role === 'admin' ? 'Administrador' : 'Familia';
+
+      setUserInfo({ name, role: roleLabel, initial });
+    }
+
+    fetchUserInfo();
+  }, []);
 
   return (
     <>
@@ -55,7 +89,7 @@ export function MobileNav({ pathname }: MobileNavProps) {
             >
               <CloseIcon className="w-4 h-4" />
             </button>
-            <SidebarContent pathname={pathname} />
+            <SidebarContent pathname={pathname} userInfo={userInfo} />
           </aside>
         </div>
       )}
